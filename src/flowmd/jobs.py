@@ -22,6 +22,25 @@ from .languages import OcrPlan
 from .pipeline import convert_pdf, count_pages
 
 
+def shorten_error(message: str, limit: int = 700) -> str:
+    """Compacte un message d'erreur : segments dupliqués retirés, longueur bornée.
+
+    Docling concatène parfois la même erreur pour chacune des pages ; inutile
+    d'afficher 21 fois « InvalidCxxCompiler » dans l'interface.
+    """
+    seen: set[str] = set()
+    unique: list[str] = []
+    for part in message.split(";"):
+        key = part.strip()
+        if key and key not in seen:
+            seen.add(key)
+            unique.append(key)
+    compact = " ; ".join(unique)
+    if len(compact) > limit:
+        compact = compact[:limit].rstrip() + " […]"
+    return compact
+
+
 class FileStatus(StrEnum):
     PENDING = "pending"
     CONVERTING = "converting"
@@ -141,7 +160,7 @@ class JobStore:
                 task.status = FileStatus.DONE
             except Exception as exc:
                 task.status = FileStatus.ERROR
-                task.error = str(exc)
+                task.error = shorten_error(str(exc))
         job.finished_at = time.time()
 
     # -- accès -------------------------------------------------------------
