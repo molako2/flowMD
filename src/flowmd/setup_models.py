@@ -64,9 +64,58 @@ def download_paddleocr_models(settings: Settings, echo=print) -> None:
     echo("Modèles PaddleOCR prêts.")
 
 
+# Données de langue officielles Tesseract (dépôt tessdata_fast, licence Apache 2.0)
+TESSDATA_URL = "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/{code}.traineddata"
+
+
+def download_tesseract_langs(settings: Settings, echo=print) -> None:
+    """Complète les données de langue ara/fra/eng manquantes de Tesseract.
+
+    Ne fait rien si Tesseract est absent. Écrit dans le dossier tessdata à côté
+    du binaire (installations « portables » ou utilisateur) ; en cas de refus
+    d'écriture (ex. Program Files sans droits admin), explique quoi faire.
+    """
+    import urllib.request
+    from pathlib import Path
+
+    from .engines import probe_tesseract
+    from .languages import _TESSERACT_CODES  # noqa: PLC2701
+
+    tess = probe_tesseract()
+    if not tess.available or not tess.cmd:
+        return
+    missing = [code for pub, code in _TESSERACT_CODES.items() if pub not in tess.langs]
+    if not missing:
+        return
+
+    tessdata = Path(tess.cmd).parent / "tessdata"
+    if not tessdata.is_dir():
+        echo(f"Avertissement : dossier tessdata introuvable ({tessdata}) — langues non complétées.")
+        return
+
+    for code in missing:
+        url = TESSDATA_URL.format(code=code)
+        echo(f"Téléchargement de la langue Tesseract « {code} » …")
+        try:
+            with urllib.request.urlopen(url, timeout=120) as response:
+                data = response.read()
+            (tessdata / f"{code}.traineddata").write_bytes(data)
+        except PermissionError:
+            echo(
+                f"Avertissement : impossible d'écrire dans {tessdata} (droits insuffisants). "
+                "Relancez l'installateur Tesseract et cochez Arabic/French, ou copiez "
+                f"manuellement {code}.traineddata dans ce dossier."
+            )
+            return
+        except Exception as exc:
+            echo(f"Avertissement : langue « {code} » non téléchargée ({exc}).")
+    echo("Langues Tesseract complétées.")
+
+
 def setup_all(settings: Settings, echo=print) -> None:
     settings.ensure_dirs()
     download_docling_models(settings, echo=echo)
     download_easyocr_models(settings, echo=echo)
     download_paddleocr_models(settings, echo=echo)
+    download_tesseract_langs(settings, echo=echo)
     echo("Installation des modèles terminée : flowMD peut fonctionner hors ligne.")
