@@ -13,7 +13,7 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from .config import Settings
@@ -22,7 +22,7 @@ from .languages import OcrPlan
 from .pipeline import convert_pdf, count_pages
 
 
-class FileStatus(str, Enum):
+class FileStatus(StrEnum):
     PENDING = "pending"
     CONVERTING = "converting"
     EXPORTING = "exporting"

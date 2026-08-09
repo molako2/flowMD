@@ -62,3 +62,7 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "B"]
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# B008 : les appels typer.Option/Argument en valeurs par défaut sont l'idiome Typer.
+"src/flowmd/cli.py" = ["B008"]
