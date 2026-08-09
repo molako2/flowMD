@@ -39,6 +39,16 @@ class TestCandidateTesseractCmds:
         monkeypatch.setattr(engines_module.sys, "platform", "linux")
         assert _candidate_tesseract_cmds() == []
 
+    def test_portable_install_next_to_flowmd(self, monkeypatch, tmp_path):
+        exe = tmp_path / "Tesseract-OCR" / "tesseract"
+        exe.parent.mkdir()
+        exe.write_bytes(b"")
+        monkeypatch.setattr(engines_module, "get_settings", lambda: _fake_settings(None))
+        monkeypatch.setattr(shutil, "which", lambda _: None)
+        monkeypatch.setattr(engines_module.sys, "platform", "linux")
+        monkeypatch.chdir(tmp_path)
+        assert _candidate_tesseract_cmds() == [str(exe)]
+
     def test_windows_standard_locations(self, monkeypatch, tmp_path):
         exe = tmp_path / "Tesseract-OCR" / "tesseract.exe"
         exe.parent.mkdir()

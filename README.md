@@ -177,9 +177,11 @@ src/flowmd/
 Deux causes possibles :
 
 1. flowMD était déjà lancé pendant l'installation : fermez la fenêtre de `start.bat` et
-   relancez-le. flowMD cherche automatiquement Tesseract dans le PATH **et** dans les dossiers
-   d'installation Windows habituels (`C:\Program Files\Tesseract-OCR`, etc.).
-2. Tesseract est installé à un emplacement inhabituel : définissez la variable d'environnement
+   relancez-le. flowMD cherche automatiquement Tesseract dans le PATH, dans les dossiers
+   d'installation Windows habituels (`C:\Program Files\Tesseract-OCR`, etc.) **et** dans un
+   dossier `Tesseract-OCR` placé directement dans le dossier flowMD (installation « portable »,
+   ex. `C:\flowMD\Tesseract-OCR`).
+2. Tesseract est installé ailleurs : définissez la variable d'environnement
    `FLOWMD_TESSERACT_CMD` avec le chemin complet, par exemple :
    `setx FLOWMD_TESSERACT_CMD "D:\Outils\Tesseract-OCR\tesseract.exe"` puis relancez flowMD.
 
