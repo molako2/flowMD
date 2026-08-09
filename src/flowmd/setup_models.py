@@ -88,7 +88,7 @@ def download_tesseract_langs(settings: Settings, echo=print) -> None:
     if not missing:
         return
 
-    tessdata = Path(tess.cmd).parent / "tessdata"
+    tessdata = Path(tess.tessdata_dir) if tess.tessdata_dir else Path(tess.cmd).parent / "tessdata"
     if not tessdata.is_dir():
         echo(f"Avertissement : dossier tessdata introuvable ({tessdata}) — langues non complétées.")
         return
