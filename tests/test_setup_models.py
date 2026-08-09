@@ -33,7 +33,7 @@ class TestDownloadTesseractLangs:
         monkeypatch.setattr(
             engines_module,
             "probe_tesseract",
-            lambda: SimpleNamespace(available=True, cmd=str(exe), langs={"en", "fr"}),
+            lambda: SimpleNamespace(available=True, cmd=str(exe), langs={"en", "fr"}, tessdata_dir=None),
         )
         import urllib.request
 
@@ -52,7 +52,7 @@ class TestDownloadTesseractLangs:
         monkeypatch.setattr(
             engines_module,
             "probe_tesseract",
-            lambda: SimpleNamespace(available=False, cmd=None, langs=set()),
+            lambda: SimpleNamespace(available=False, cmd=None, langs=set(), tessdata_dir=None),
         )
         messages: list[str] = []
         download_tesseract_langs(Settings(data_dir=tmp_path / "data"), echo=messages.append)
@@ -66,7 +66,7 @@ class TestDownloadTesseractLangs:
         monkeypatch.setattr(
             engines_module,
             "probe_tesseract",
-            lambda: SimpleNamespace(available=True, cmd=str(exe), langs={"fr", "ar", "en"}),
+            lambda: SimpleNamespace(available=True, cmd=str(exe), langs={"fr", "ar", "en"}, tessdata_dir=None),
         )
         messages: list[str] = []
         download_tesseract_langs(Settings(data_dir=tmp_path / "data"), echo=messages.append)

@@ -195,6 +195,8 @@ def doctor() -> None:
             f"Tesseract : {tess.version} ({tess.cmd}) — "
             f"langues fr/ar/en : {sorted(tess.langs) or 'AUCUNE (réinstallez avec Arabic + French)'}"
         )
+        if tess.tessdata_dir:
+            typer.echo(f"  Dossier de langues imposé : {tess.tessdata_dir}")
     else:
         from .engines import _candidate_tesseract_cmds
 

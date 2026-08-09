@@ -22,6 +22,7 @@ class TesseractInfo:
     cmd: str | None = None
     version: str | None = None
     langs: set[str] = field(default_factory=set)  # codes publics fr/ar/en
+    tessdata_dir: str | None = None  # dossier de langues imposé (--tessdata-dir)
 
 
 def _candidate_tesseract_cmds() -> list[str]:
@@ -75,13 +76,25 @@ def _candidate_tesseract_cmds() -> list[str]:
 
 
 def _probe_tesseract_cmd(cmd: str) -> TesseractInfo:
+    """Interroge un binaire tesseract donné.
+
+    Si un dossier ``tessdata`` existe à côté du binaire, il est imposé via
+    ``--tessdata-dir`` : une variable TESSDATA_PREFIX parasite (reste d'une
+    ancienne installation) ne peut alors plus détourner les langues.
+    """
+    tessdata_dir: str | None = None
+    sidecar = Path(cmd).parent / "tessdata"
+    if sidecar.is_dir():
+        tessdata_dir = str(sidecar)
+    tessdata_args = ["--tessdata-dir", tessdata_dir] if tessdata_dir else []
+
     try:
         version_out = subprocess.run(
             [cmd, "--version"], capture_output=True, text=True, timeout=10
         )
         version = version_out.stdout.splitlines()[0].strip() if version_out.stdout else None
         langs_out = subprocess.run(
-            [cmd, "--list-langs"], capture_output=True, text=True, timeout=10
+            [cmd, *tessdata_args, "--list-langs"], capture_output=True, text=True, timeout=10
         )
         installed = {
             line.strip()
@@ -89,7 +102,9 @@ def _probe_tesseract_cmd(cmd: str) -> TesseractInfo:
             if line.strip() and not line.lower().startswith("list of")
         }
         public = {_TESS_PUBLIC_BY_CODE[code] for code in installed if code in _TESS_PUBLIC_BY_CODE}
-        return TesseractInfo(available=True, cmd=cmd, version=version, langs=public)
+        return TesseractInfo(
+            available=True, cmd=cmd, version=version, langs=public, tessdata_dir=tessdata_dir
+        )
     except (OSError, subprocess.SubprocessError):
         return TesseractInfo(available=False)
 
@@ -130,10 +145,14 @@ def build_ocr_options(plan: OcrPlan, settings: Settings, force_ocr: bool = False
             lang=plan.engine_lang_codes,
             force_full_page_ocr=force_ocr,
         )
-        # Hors PATH (cas Windows typique) : transmettre le chemin détecté.
+        # Hors PATH (cas Windows typique) : transmettre le chemin détecté,
+        # et imposer le dossier de langues du binaire (--tessdata-dir) pour
+        # neutraliser un éventuel TESSDATA_PREFIX parasite.
         tess = probe_tesseract()
         if tess.cmd:
             options.tesseract_cmd = tess.cmd
+        if tess.tessdata_dir:
+            options.path = tess.tessdata_dir
         return options
 
     if plan.engine == "paddleocr":
