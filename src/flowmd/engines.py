@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 
-from .config import Settings
+from .config import Settings, get_settings
 from .languages import _TESSERACT_CODES, OcrPlan  # noqa: PLC2701
 
 _TESS_PUBLIC_BY_CODE = {v: k for k, v in _TESSERACT_CODES.items()}
@@ -21,11 +24,47 @@ class TesseractInfo:
     langs: set[str] = field(default_factory=set)  # codes publics fr/ar/en
 
 
-def probe_tesseract() -> TesseractInfo:
-    """Cherche le binaire tesseract et les données de langue ara/fra/eng."""
-    cmd = shutil.which("tesseract")
-    if not cmd:
-        return TesseractInfo(available=False)
+def _candidate_tesseract_cmds() -> list[str]:
+    """Emplacements possibles du binaire tesseract, par ordre de priorité.
+
+    L'installateur Windows (UB-Mannheim) n'ajoute pas tesseract.exe au PATH
+    par défaut : on sonde donc aussi les dossiers d'installation standards.
+    """
+    candidates: list[str] = []
+
+    configured = get_settings().tesseract_cmd
+    if configured:
+        candidates.append(configured)
+
+    which = shutil.which("tesseract")
+    if which:
+        candidates.append(which)
+
+    if sys.platform == "win32":
+        roots = [
+            os.environ.get("ProgramFiles"),
+            os.environ.get("ProgramFiles(x86)"),
+        ]
+        local_appdata = os.environ.get("LOCALAPPDATA")
+        if local_appdata:
+            roots.append(str(Path(local_appdata) / "Programs"))
+        for root in roots:
+            if not root:
+                continue
+            exe = Path(root) / "Tesseract-OCR" / "tesseract.exe"
+            if exe.is_file():
+                candidates.append(str(exe))
+
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for candidate in candidates:
+        if candidate not in seen:
+            seen.add(candidate)
+            ordered.append(candidate)
+    return ordered
+
+
+def _probe_tesseract_cmd(cmd: str) -> TesseractInfo:
     try:
         version_out = subprocess.run(
             [cmd, "--version"], capture_output=True, text=True, timeout=10
@@ -43,6 +82,15 @@ def probe_tesseract() -> TesseractInfo:
         return TesseractInfo(available=True, cmd=cmd, version=version, langs=public)
     except (OSError, subprocess.SubprocessError):
         return TesseractInfo(available=False)
+
+
+def probe_tesseract() -> TesseractInfo:
+    """Cherche le binaire tesseract (PATH + emplacements Windows) et ses langues."""
+    for cmd in _candidate_tesseract_cmds():
+        info = _probe_tesseract_cmd(cmd)
+        if info.available:
+            return info
+    return TesseractInfo(available=False)
 
 
 def easyocr_available() -> bool:
@@ -68,10 +116,15 @@ def build_ocr_options(plan: OcrPlan, settings: Settings, force_ocr: bool = False
     if plan.engine == "tesseract":
         from docling.datamodel.pipeline_options import TesseractCliOcrOptions
 
-        return TesseractCliOcrOptions(
+        options = TesseractCliOcrOptions(
             lang=plan.engine_lang_codes,
             force_full_page_ocr=force_ocr,
         )
+        # Hors PATH (cas Windows typique) : transmettre le chemin détecté.
+        tess = probe_tesseract()
+        if tess.cmd:
+            options.tesseract_cmd = tess.cmd
+        return options
 
     if plan.engine == "paddleocr":
         from .ocr_paddle import PaddleOcrOptions
@@ -128,9 +181,13 @@ def engines_status(settings: Settings) -> dict:
                 "label": "Tesseract",
                 "available": tess.available,
                 "detail": (
-                    f"{tess.version} — langues : {', '.join(sorted(tess.langs)) or 'aucune (fr/ar/en)'}"
+                    f"{tess.version} — langues fr/ar/en : {', '.join(sorted(tess.langs)) or 'AUCUNE (réinstallez avec Arabic + French)'}"
                     if tess.available
-                    else "Binaire tesseract introuvable (installation facultative)."
+                    else (
+                        "Introuvable. Si Tesseract vient d'être installé, fermez et "
+                        "relancez flowMD (start.bat). Sinon, définissez "
+                        "FLOWMD_TESSERACT_CMD=chemin\\vers\\tesseract.exe."
+                    )
                 ),
                 "langs": sorted(tess.langs),
             },

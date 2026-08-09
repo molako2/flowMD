@@ -26,8 +26,12 @@ class Settings(BaseSettings):
     port: int = 8000
 
     # OCR
-    default_engine: str = "auto"  # auto | easyocr | tesseract
+    default_engine: str = "auto"  # auto | easyocr | tesseract | paddleocr
     easyocr_gpu: bool = False
+
+    # Chemin complet de tesseract(.exe) si le binaire n'est pas dans le PATH
+    # (variable d'environnement FLOWMD_TESSERACT_CMD)
+    tesseract_cmd: str | None = None
 
     # Avertir au-delà de ce nombre de pages (durée de traitement sur CPU)
     page_warning_threshold: int = 300
