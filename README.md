@@ -1,0 +1,188 @@
+# flowMD
+
+**Convertissez vos PDF en Markdown, Word et Excel — français, arabe, anglais — 100 % en local.**
+
+flowMD est une application locale d'OCR et de conversion de documents. Elle transforme vos PDF
+(y compris les documents **scannés**) en fichiers **Markdown (.md)**, **Word (.docx)** et
+**Excel (.xlsx)**, avec détection de la structure du document : titres, paragraphes, **tableaux**,
+images. Aucune donnée ne quitte votre machine — aucun service en ligne, aucun abonnement.
+
+- 🇫🇷 🇲🇦 🇬🇧 OCR en **français, arabe et anglais** (moteurs interchangeables)
+- 📊 Les tableaux détectés deviennent de **vrais tableaux** (onglets Excel, tableaux Word/Markdown)
+- 🖥️ **Interface web en français** : glisser-déposer, progression, aperçu (avec sens de lecture RTL), téléchargements
+- ⌨️ **Ligne de commande** pour les conversions en série
+- 🔒 **100 % local** : idéal pour les documents confidentiels (comptabilité, audit, juridique)
+
+Le cœur de l'analyse est [Docling](https://github.com/docling-project/docling) (IBM, licence MIT),
+la référence open source pour la conversion structurée de documents, associé à trois moteurs OCR
+interchangeables : [EasyOCR](https://github.com/JaidedAI/EasyOCR) (inclus),
+[PaddleOCR PP-OCRv6](https://github.com/PaddlePaddle/PaddleOCR) (facultatif, le plus précis —
+intégré via un plugin Docling fourni par flowMD) et
+[Tesseract](https://github.com/tesseract-ocr/tesseract) (facultatif, recommandé pour les
+documents mêlant arabe et français).
+
+---
+
+## Installation
+
+### Option A — Windows (recommandée pour les non-développeurs)
+
+1. Installez [Python 3.11+](https://www.python.org/downloads/) (cochez **« Add python.exe to PATH »**).
+2. Téléchargez ce dépôt (Code → Download ZIP) et décompressez-le.
+3. Double-cliquez sur **`start.bat`**.
+
+Le script crée l'environnement, installe les dépendances, télécharge les modèles d'analyse
+(~2 Go, **une seule fois**) puis ouvre l'interface dans votre navigateur.
+
+> 💡 **Documents mêlant arabe et français ?** Installez aussi
+> [Tesseract pour Windows](https://github.com/UB-Mannheim/tesseract/wiki) en cochant les langues
+> *Arabic* et *French* lors de l'installation. flowMD le détecte automatiquement.
+
+### Option B — Linux / macOS
+
+```bash
+git clone https://github.com/molako2/flowMD.git
+cd flowMD
+./start.sh
+```
+
+### Option C — Docker (tout inclus, hors ligne après construction)
+
+```bash
+docker compose up --build
+```
+
+Puis ouvrez <http://localhost:8000>. L'image contient Tesseract (ara/fra/eng) **et** les modèles
+déjà téléchargés : après la construction, plus aucun accès réseau n'est nécessaire.
+
+Pour inclure aussi le moteur PaddleOCR (PP-OCRv6) dans l'image (~1,5 Go de plus) :
+
+```bash
+docker compose build --build-arg INSTALL_PADDLEOCR=1 && docker compose up
+```
+
+---
+
+## Utilisation
+
+### Interface web
+
+```bash
+flowmd serve --open-browser
+```
+
+1. Glissez un ou plusieurs PDF dans la zone de dépôt.
+2. Choisissez les **langues** du document (français / arabe / anglais), les **formats** de sortie
+   et, pour un document scanné, activez **« Forcer l'OCR »**.
+3. Cliquez sur **Convertir**, suivez la progression, prévisualisez le résultat et téléchargez
+   chaque format ou tout en ZIP.
+
+### Ligne de commande
+
+```bash
+# Conversion complète (Markdown + Word + Excel)
+flowmd convert facture.pdf
+
+# Document scanné en arabe, sortie Word uniquement
+flowmd convert scan.pdf --langs ar --to docx --force-ocr
+
+# Plusieurs fichiers, moteur Tesseract explicite
+flowmd convert *.pdf --langs fr,ar --engine tesseract --out ./resultats
+
+# Diagnostic de l'installation
+flowmd doctor
+
+# Téléchargement des modèles (~2 Go, une seule fois)
+flowmd setup
+```
+
+---
+
+## Langues et moteurs OCR
+
+| Moteur | Installation | fr | ar | en | ar + fr ensemble |
+|---|---|---|---|---|---|
+| **EasyOCR** (inclus) | incluse avec flowMD | ✔ | ✔ | ✔ | ✖ |
+| **PaddleOCR PP-OCRv6** (le plus précis) | `pip install paddlepaddle paddleocr` | ✔ | ✔ (PP-OCRv5) | ✔ | ✖ |
+| **Tesseract** (seul à gérer ar + fr ensemble) | facultative (binaire système) | ✔ | ✔ | ✔ | ✔ |
+
+PaddleOCR utilise le modèle unifié **PP-OCRv6** (50 langues, français et anglais inclus) et
+bascule automatiquement sur le modèle arabe **PP-OCRv5** quand l'arabe est demandé. Comme
+EasyOCR, il ne charge qu'un modèle à la fois : arabe + français simultanés restent l'apanage
+de Tesseract.
+
+Le moteur **auto** choisit intelligemment :
+
+1. document **arabe + français** → Tesseract s'il est installé (seul moteur multi-écritures) ;
+2. sinon → **PaddleOCR (PP-OCRv6)** s'il est installé (le plus précis) ;
+3. sinon → Tesseract pour l'arabe, EasyOCR pour le reste.
+
+Si la combinaison demandée est impossible avec le moteur retenu, flowMD bascule ou retire une
+langue **en vous l'indiquant clairement** (interface et CLI).
+
+Pour installer le moteur PaddleOCR :
+
+- **Windows** : double-cliquez sur **`install-paddleocr.bat`** (après un premier lancement
+  de `start.bat`).
+- **Linux / macOS** (dans le dossier flowMD, environnement activé) :
+
+```bash
+pip install paddlepaddle paddleocr
+flowmd setup
+```
+
+> ⚠️ Sous Windows (cmd), ne copiez jamais la partie `# commentaire` d'une commande : le
+> symbole `#` n'est un commentaire que dans les terminaux Linux/macOS.
+
+## Benchmark
+
+Résultats sur les échantillons du dépôt (`tests/samples/`, OCR pleine page forcé) — à reproduire
+chez vous avec `python scripts/benchmark_engines.py` :
+
+_À compléter : exécutez le benchmark après `flowmd setup` et collez le tableau ici._
+
+---
+
+## Pour les développeurs
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+
+pytest                    # tests rapides (sans modèles)
+pytest -m integration     # tests complets (vrais modèles, lents)
+
+# Frontend (interface French/Vite/React) — le build est committé
+cd frontend && npm install && npm run build
+```
+
+Architecture :
+
+```
+src/flowmd/
+├── languages.py      # normalisation fr/ar/en + règles de compatibilité moteur
+├── engines.py        # détection EasyOCR/PaddleOCR/Tesseract, options Docling
+├── ocr_paddle.py     # plugin Docling : moteur PaddleOCR (PP-OCRv6)
+├── pipeline.py       # PDF → DoclingDocument (cache de convertisseurs)
+├── exporters/        # markdown.py, docx.py (pandoc + RTL), xlsx.py (openpyxl)
+├── jobs.py           # file de jobs en mémoire, worker unique
+├── cli.py            # commandes convert / serve / setup / doctor
+├── server/           # API FastAPI + interface web statique
+└── web/static/       # build du frontend (committé)
+```
+
+## Limites connues
+
+- **Documents scannés volumineux** : le traitement est séquentiel et s'exécute sur CPU ;
+  comptez plusieurs secondes par page en OCR forcé.
+- **Ordre de lecture arabe** : sur des mises en page complexes (multi-colonnes), l'ordre du texte
+  peut nécessiter une relecture. L'export Word reste éditable ; l'aperçu propose un bouton RTL.
+- **Arabe + français dans un même passage** : impossible avec EasyOCR comme avec PaddleOCR
+  (un seul modèle de reconnaissance chargé) — installez Tesseract pour les documents mixtes.
+- La première conversion sans `flowmd setup` déclenche le téléchargement des modèles et peut
+  sembler bloquée : préférez toujours `flowmd setup` (ou `start.bat`, qui s'en charge).
+
+## Licence
+
+MIT — voir [LICENSE](LICENSE). Docling est distribué sous licence MIT ; EasyOCR, PaddleOCR et
+Tesseract sous Apache 2.0 ; la police d'exemple Noto Naskh Arabic sous licence SIL OFL.

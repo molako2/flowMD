@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flowmd"
+version = "0.1.0"
+description = "Convertisseur local de PDF (OCR) vers Markdown, Word et Excel — français, arabe, anglais. 100 % local, basé sur Docling."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "flowMD" }]
+keywords = ["pdf", "ocr", "markdown", "docx", "xlsx", "docling", "arabic", "french"]
+dependencies = [
+    "docling>=2.15",
+    "easyocr>=1.7",
+    "typer>=0.12",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
+    "pydantic-settings>=2.4",
+    "pypandoc-binary>=1.13",
+    "python-docx>=1.1",
+    "openpyxl>=3.1",
+    "pandas>=2.0",
+]
+
+[project.optional-dependencies]
+# Moteur OCR supplémentaire PaddleOCR (PP-OCRv6) — le plus précis.
+paddleocr = [
+    "paddlepaddle>=3.0",
+    "paddleocr>=3.7",
+]
+dev = [
+    "pytest>=8",
+    "pytest-timeout>=2.3",
+    "httpx>=0.27",
+    "fpdf2>=2.7.5",
+    "uharfbuzz>=0.39",
+    "pillow>=10",
+    "pypdfium2>=4.30",
+    "rapidfuzz>=3.9",
+    "ruff>=0.6",
+]
+
+[project.scripts]
+flowmd = "flowmd.cli:app"
+
+# Plugin Docling : enregistre le moteur OCR PaddleOCR (PP-OCRv6) de flowMD.
+[project.entry-points."docling"]
+flowmd_paddleocr = "flowmd.ocr_paddle"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"flowmd.web" = ["static/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: tests lents utilisant les vrais modèles (désactivés par défaut)",
+]
+addopts = "-m 'not integration'"
+timeout = 300
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# B008 : les appels typer.Option/Argument en valeurs par défaut sont l'idiome Typer.
+"src/flowmd/cli.py" = ["B008"]

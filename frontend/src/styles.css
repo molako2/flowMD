@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+:root {
+  font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial,
+    "Noto Sans", sans-serif;
+}
+
+body {
+  @apply bg-slate-100 text-slate-900 antialiased;
+}
+
+/* Aperçu markdown : typographie simple et lisible, y compris en RTL. */
+.markdown-body {
+  @apply text-sm leading-relaxed text-slate-800;
+}
+.markdown-body h1 {
+  @apply mb-3 mt-5 text-2xl font-bold text-slate-900;
+}
+.markdown-body h2 {
+  @apply mb-2 mt-4 text-xl font-semibold text-slate-900;
+}
+.markdown-body h3 {
+  @apply mb-2 mt-3 text-lg font-semibold text-slate-900;
+}
+.markdown-body p {
+  @apply my-2;
+  unicode-bidi: plaintext;
+}
+.markdown-body ul {
+  @apply my-2 list-disc ps-6;
+}
+.markdown-body ol {
+  @apply my-2 list-decimal ps-6;
+}
+.markdown-body li {
+  unicode-bidi: plaintext;
+}
+.markdown-body table {
+  @apply my-3 w-full border-collapse text-xs;
+}
+.markdown-body th {
+  @apply border border-slate-300 bg-slate-50 px-2 py-1.5 text-start font-semibold;
+}
+.markdown-body td {
+  @apply border border-slate-300 px-2 py-1.5;
+  unicode-bidi: plaintext;
+}
+.markdown-body code {
+  @apply rounded bg-slate-100 px-1 py-0.5 font-mono text-[0.85em];
+}
+.markdown-body pre {
+  @apply my-3 overflow-x-auto rounded-lg bg-slate-900 p-3 text-slate-100;
+}
+.markdown-body pre code {
+  @apply bg-transparent p-0;
+}
+.markdown-body img {
+  @apply my-3 max-w-full rounded border border-slate-200;
+}
+.markdown-body blockquote {
+  @apply my-3 border-s-4 border-slate-300 ps-3 text-slate-600;
+}

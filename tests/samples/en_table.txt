@@ -1,0 +1,9 @@
+QUARTERLY FINANCIAL SUMMARY
+Example Company Ltd - Fiscal year 2026
+Key figures by quarter:
+Quarter Revenue (USD) Expenses (USD) Net income (USD)
+Q1 2026 120,500 84,300 36,200
+Q2 2026 134,900 90,150 44,750
+Q3 2026 128,400 88,700 39,700
+Total net income (9 months): 120,650 USD
+Prepared by the finance department.
