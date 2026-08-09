@@ -46,3 +46,7 @@ if not exist data\models\docling (
 echo.
 echo Demarrage de flowMD sur http://127.0.0.1:8000 ...
 flowmd serve --open-browser
+
+echo.
+echo flowMD s'est arrete. Lisez le message ci-dessus en cas d'erreur.
+pause

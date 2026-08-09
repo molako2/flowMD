@@ -142,6 +142,29 @@ def serve(
             fg=typer.colors.YELLOW,
         )
 
+    # Un serveur flowMD précédent occupe-t-il déjà le port ? Sans ce contrôle,
+    # uvicorn échoue et la fenêtre se ferme sans explication, pendant que le
+    # navigateur continue de parler à l'ancien serveur (code périmé).
+    import socket
+
+    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        probe.bind((final_host, final_port))
+    except OSError:
+        typer.secho(
+            f"ERREUR : le port {final_port} est déjà utilisé.\n"
+            "Une autre fenêtre flowMD tourne probablement encore (peut-être avec une "
+            "ancienne version du code).\n"
+            "Fermez-la, ou exécutez dans une invite de commandes :\n"
+            "    taskkill /f /im python.exe\n"
+            "puis relancez flowMD.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1) from None
+    finally:
+        probe.close()
+
     url = f"http://{final_host}:{final_port}"
     typer.secho(f"flowMD démarre sur {url}", fg=typer.colors.GREEN)
     if open_browser:
