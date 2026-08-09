@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from .. import __version__
 from ..config import Settings
-from ..engines import engines_status, probe_tesseract
+from ..engines import engines_status, paddleocr_available, probe_tesseract
 from ..exporters import normalize_formats
 from ..jobs import JobStore
 from ..languages import LanguageError, normalize_langs, plan_ocr
@@ -65,7 +65,13 @@ async def create_job(
     try:
         formats_list = normalize_formats(formats)
         tess = probe_tesseract()
-        plan = plan_ocr(engine, normalize_langs(langs), tess.available, tess.langs)
+        plan = plan_ocr(
+            engine,
+            normalize_langs(langs),
+            tess.available,
+            tess.langs,
+            paddleocr_available=paddleocr_available(),
+        )
     except (LanguageError, ValueError) as exc:
         return _error(400, "INVALID_PARAMS", str(exc))
 

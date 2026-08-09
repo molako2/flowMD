@@ -21,7 +21,11 @@ SAMPLES = ROOT / "tests" / "samples"
 sys.path.insert(0, str(ROOT / "src"))
 
 from flowmd.config import Settings  # noqa: E402
-from flowmd.engines import docling_available, probe_tesseract  # noqa: E402
+from flowmd.engines import (  # noqa: E402
+    docling_available,
+    paddleocr_available,
+    probe_tesseract,
+)
 from flowmd.languages import normalize_langs, plan_ocr  # noqa: E402
 
 CASES = [
@@ -48,7 +52,12 @@ def main() -> None:
 
     settings = Settings()
     tess = probe_tesseract()
+    paddle = paddleocr_available()
     engines = ["easyocr"]
+    if paddle:
+        engines.append("paddleocr")
+    else:
+        print("Note : PaddleOCR non installé (pip install paddlepaddle paddleocr) — ignoré.\n")
     if tess.available and {"fr", "ar", "en"} <= tess.langs:
         engines.append("tesseract")
     else:
@@ -57,7 +66,13 @@ def main() -> None:
     rows: list[tuple[str, str, str, str]] = []
     for engine in engines:
         for pdf_name, truth_name, langs, label in CASES:
-            plan = plan_ocr(engine, normalize_langs(langs), tess.available, tess.langs)
+            plan = plan_ocr(
+                engine,
+                normalize_langs(langs),
+                tess.available,
+                tess.langs,
+                paddleocr_available=paddle,
+            )
             if plan.engine != engine:
                 rows.append((label, engine, "—", "non pris en charge (ar+fr)"))
                 continue

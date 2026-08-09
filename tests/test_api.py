@@ -110,7 +110,7 @@ class TestJobLifecycle:
         assert response.status_code == 200
         job = response.json()
         assert job["langs"] == ["ar"] or job["langs"] == ["ar", "en"]
-        assert any(w["code"] == "EASYOCR_AR_FR_DROPPED_FR" for w in job["warnings"])
+        assert any(w["code"] == "AR_FR_DROPPED_FR" for w in job["warnings"])
 
     def test_rejects_non_pdf(self, client):
         files = [("files", ("virus.exe", b"MZ", "application/octet-stream"))]

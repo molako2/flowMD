@@ -14,8 +14,10 @@ images. Aucune donnée ne quitte votre machine — aucun service en ligne, aucun
 - 🔒 **100 % local** : idéal pour les documents confidentiels (comptabilité, audit, juridique)
 
 Le cœur de l'analyse est [Docling](https://github.com/docling-project/docling) (IBM, licence MIT),
-la référence open source pour la conversion structurée de documents, associé aux moteurs OCR
-[EasyOCR](https://github.com/JaidedAI/EasyOCR) (inclus) et
+la référence open source pour la conversion structurée de documents, associé à trois moteurs OCR
+interchangeables : [EasyOCR](https://github.com/JaidedAI/EasyOCR) (inclus),
+[PaddleOCR PP-OCRv6](https://github.com/PaddlePaddle/PaddleOCR) (facultatif, le plus précis —
+intégré via un plugin Docling fourni par flowMD) et
 [Tesseract](https://github.com/tesseract-ocr/tesseract) (facultatif, recommandé pour les
 documents mêlant arabe et français).
 
@@ -52,6 +54,12 @@ docker compose up --build
 
 Puis ouvrez <http://localhost:8000>. L'image contient Tesseract (ara/fra/eng) **et** les modèles
 déjà téléchargés : après la construction, plus aucun accès réseau n'est nécessaire.
+
+Pour inclure aussi le moteur PaddleOCR (PP-OCRv6) dans l'image (~1,5 Go de plus) :
+
+```bash
+docker compose build --build-arg INSTALL_PADDLEOCR=1 && docker compose up
+```
 
 ---
 
@@ -94,13 +102,30 @@ flowmd setup
 
 | Moteur | Installation | fr | ar | en | ar + fr ensemble |
 |---|---|---|---|---|---|
-| **EasyOCR** (par défaut) | incluse avec flowMD | ✔ | ✔ | ✔ | ✖ (limitation d'EasyOCR) |
-| **Tesseract** (recommandé pour les docs mixtes) | facultative (binaire système) | ✔ | ✔ | ✔ | ✔ |
+| **EasyOCR** (inclus) | incluse avec flowMD | ✔ | ✔ | ✔ | ✖ |
+| **PaddleOCR PP-OCRv6** (le plus précis) | `pip install paddlepaddle paddleocr` | ✔ | ✔ (PP-OCRv5) | ✔ | ✖ |
+| **Tesseract** (seul à gérer ar + fr ensemble) | facultative (binaire système) | ✔ | ✔ | ✔ | ✔ |
 
-Le moteur **auto** choisit intelligemment : Tesseract dès qu'il est disponible et que l'arabe est
-demandé, EasyOCR sinon. Si vous demandez **arabe + français avec EasyOCR seul**, flowMD bascule
-automatiquement sur Tesseract, ou — s'il est absent — poursuit en arabe + anglais en vous
-l'indiquant clairement.
+PaddleOCR utilise le modèle unifié **PP-OCRv6** (50 langues, français et anglais inclus) et
+bascule automatiquement sur le modèle arabe **PP-OCRv5** quand l'arabe est demandé. Comme
+EasyOCR, il ne charge qu'un modèle à la fois : arabe + français simultanés restent l'apanage
+de Tesseract.
+
+Le moteur **auto** choisit intelligemment :
+
+1. document **arabe + français** → Tesseract s'il est installé (seul moteur multi-écritures) ;
+2. sinon → **PaddleOCR (PP-OCRv6)** s'il est installé (le plus précis) ;
+3. sinon → Tesseract pour l'arabe, EasyOCR pour le reste.
+
+Si la combinaison demandée est impossible avec le moteur retenu, flowMD bascule ou retire une
+langue **en vous l'indiquant clairement** (interface et CLI).
+
+Pour installer le moteur PaddleOCR :
+
+```bash
+pip install paddlepaddle paddleocr        # ou : pip install -e ".[paddleocr]"
+flowmd setup                              # pré-télécharge aussi les modèles PaddleOCR
+```
 
 ## Benchmark
 
@@ -129,7 +154,8 @@ Architecture :
 ```
 src/flowmd/
 ├── languages.py      # normalisation fr/ar/en + règles de compatibilité moteur
-├── engines.py        # détection EasyOCR/Tesseract, options Docling
+├── engines.py        # détection EasyOCR/PaddleOCR/Tesseract, options Docling
+├── ocr_paddle.py     # plugin Docling : moteur PaddleOCR (PP-OCRv6)
 ├── pipeline.py       # PDF → DoclingDocument (cache de convertisseurs)
 ├── exporters/        # markdown.py, docx.py (pandoc + RTL), xlsx.py (openpyxl)
 ├── jobs.py           # file de jobs en mémoire, worker unique
@@ -144,12 +170,12 @@ src/flowmd/
   comptez plusieurs secondes par page en OCR forcé.
 - **Ordre de lecture arabe** : sur des mises en page complexes (multi-colonnes), l'ordre du texte
   peut nécessiter une relecture. L'export Word reste éditable ; l'aperçu propose un bouton RTL.
-- **EasyOCR arabe + français** : combinaison impossible dans un même passage (limitation du
-  moteur) — installez Tesseract pour les documents mixtes.
+- **Arabe + français dans un même passage** : impossible avec EasyOCR comme avec PaddleOCR
+  (un seul modèle de reconnaissance chargé) — installez Tesseract pour les documents mixtes.
 - La première conversion sans `flowmd setup` déclenche le téléchargement des modèles et peut
   sembler bloquée : préférez toujours `flowmd setup` (ou `start.bat`, qui s'en charge).
 
 ## Licence
 
-MIT — voir [LICENSE](LICENSE). Docling est distribué sous licence MIT ; EasyOCR sous Apache 2.0 ;
+MIT — voir [LICENSE](LICENSE). Docling est distribué sous licence MIT ; EasyOCR, PaddleOCR et
 Tesseract sous Apache 2.0 ; la police d'exemple Noto Naskh Arabic sous licence SIL OFL.

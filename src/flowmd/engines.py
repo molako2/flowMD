@@ -49,6 +49,10 @@ def easyocr_available() -> bool:
     return importlib.util.find_spec("easyocr") is not None
 
 
+def paddleocr_available() -> bool:
+    return importlib.util.find_spec("paddleocr") is not None
+
+
 def docling_available() -> bool:
     return importlib.util.find_spec("docling") is not None
 
@@ -69,6 +73,14 @@ def build_ocr_options(plan: OcrPlan, settings: Settings, force_ocr: bool = False
             force_full_page_ocr=force_ocr,
         )
 
+    if plan.engine == "paddleocr":
+        from .ocr_paddle import PaddleOcrOptions
+
+        return PaddleOcrOptions(
+            lang=plan.engine_lang_codes,
+            force_full_page_ocr=force_ocr,
+        )
+
     from docling.datamodel.pipeline_options import EasyOcrOptions
 
     settings.easyocr_models_dir.mkdir(parents=True, exist_ok=True)
@@ -85,13 +97,25 @@ def engines_status(settings: Settings) -> dict:
     """État des moteurs pour l'API /api/engines et `flowmd doctor`."""
     tess = probe_tesseract()
     easy = easyocr_available()
+    paddle = paddleocr_available()
     return {
         "engines": [
             {
                 "id": "auto",
                 "label": "Automatique (recommandé)",
-                "available": easy or tess.available,
+                "available": easy or tess.available or paddle,
                 "detail": "Choisit le meilleur moteur selon les langues demandées.",
+            },
+            {
+                "id": "paddleocr",
+                "label": "PaddleOCR (PP-OCRv6)",
+                "available": paddle,
+                "detail": (
+                    "Le plus précis (PP-OCRv6, arabe via PP-OCRv5). "
+                    "Arabe + français impossible simultanément."
+                    if paddle
+                    else "Non installé : pip install paddlepaddle paddleocr"
+                ),
             },
             {
                 "id": "easyocr",

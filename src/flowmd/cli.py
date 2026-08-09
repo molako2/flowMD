@@ -38,11 +38,17 @@ def main(
 
 
 def _build_plan(engine: str, langs: str):
-    from .engines import probe_tesseract
+    from .engines import paddleocr_available, probe_tesseract
 
     tess = probe_tesseract()
     try:
-        return plan_ocr(engine, normalize_langs(langs), tess.available, tess.langs)
+        return plan_ocr(
+            engine,
+            normalize_langs(langs),
+            tess.available,
+            tess.langs,
+            paddleocr_available=paddleocr_available(),
+        )
     except LanguageError as exc:
         typer.secho(f"Erreur : {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=2) from exc
@@ -53,7 +59,9 @@ def convert(
     files: list[Path] = typer.Argument(..., help="Fichier(s) PDF à convertir."),
     to: str = typer.Option("md,docx,xlsx", "--to", "-t", help="Formats de sortie : md, docx, xlsx."),
     langs: str = typer.Option("fr,ar,en", "--langs", "-l", help="Langues du document : fr, ar, en."),
-    engine: str = typer.Option("auto", "--engine", "-e", help="Moteur OCR : auto, easyocr, tesseract."),
+    engine: str = typer.Option(
+        "auto", "--engine", "-e", help="Moteur OCR : auto, easyocr, tesseract, paddleocr."
+    ),
     force_ocr: bool = typer.Option(
         False, "--force-ocr", help="Forcer l'OCR complet (documents scannés ou couche texte corrompue)."
     ),
@@ -162,7 +170,13 @@ def setup() -> None:
 def doctor() -> None:
     """Diagnostic : Python, moteurs OCR, modèles, pandoc, espace disque."""
     settings = get_settings()
-    from .engines import docling_available, easyocr_available, models_ready, probe_tesseract
+    from .engines import (
+        docling_available,
+        easyocr_available,
+        models_ready,
+        paddleocr_available,
+        probe_tesseract,
+    )
 
     typer.echo(f"flowMD {__version__}")
     typer.echo(f"Python : {sys.version.split()[0]}")
@@ -170,6 +184,10 @@ def doctor() -> None:
 
     typer.echo(f"docling installé : {'oui' if docling_available() else 'NON'}")
     typer.echo(f"EasyOCR installé : {'oui' if easyocr_available() else 'NON'}")
+    typer.echo(
+        "PaddleOCR (PP-OCRv6) installé : "
+        + ("oui" if paddleocr_available() else "non (pip install paddlepaddle paddleocr)")
+    )
 
     tess = probe_tesseract()
     if tess.available:

@@ -21,6 +21,12 @@ COPY pyproject.toml README.md LICENSE ./
 COPY src ./src
 RUN pip install --no-cache-dir .
 
+# Moteur PaddleOCR (PP-OCRv6) en option : docker build --build-arg INSTALL_PADDLEOCR=1
+ARG INSTALL_PADDLEOCR=0
+RUN if [ "$INSTALL_PADDLEOCR" = "1" ]; then \
+        pip install --no-cache-dir paddlepaddle paddleocr; \
+    fi
+
 # Modèles cuits dans l'image : ~2 Go, mais docker compose up fonctionne
 # ensuite sans aucun accès réseau.
 ENV FLOWMD_DATA_DIR=/app/data

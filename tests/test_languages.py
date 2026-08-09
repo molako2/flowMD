@@ -6,6 +6,8 @@ from flowmd.languages import (
     LanguageError,
     easyocr_supports,
     normalize_langs,
+    paddle_primary_lang,
+    paddle_supports,
     plan_ocr,
 )
 
@@ -53,13 +55,13 @@ class TestPlanOcr:
         plan = plan_ocr("easyocr", ["ar", "fr"], tesseract_available=True)
         assert plan.engine == "tesseract"
         assert plan.langs == ["ar", "fr"]
-        assert plan.warnings[0]["code"] == "EASYOCR_AR_FR_SWITCHED_TESSERACT"
+        assert plan.warnings[0]["code"] == "AR_FR_SWITCHED_TESSERACT"
 
     def test_easyocr_ar_fr_drops_fr_without_tesseract(self):
         plan = plan_ocr("easyocr", ["ar", "fr", "en"], tesseract_available=False)
         assert plan.engine == "easyocr"
         assert plan.langs == ["ar", "en"]
-        assert plan.warnings[0]["code"] == "EASYOCR_AR_FR_DROPPED_FR"
+        assert plan.warnings[0]["code"] == "AR_FR_DROPPED_FR"
 
     def test_auto_prefers_tesseract_for_arabic(self):
         plan = plan_ocr("auto", ["ar", "fr", "en"], tesseract_available=True)
@@ -77,7 +79,7 @@ class TestPlanOcr:
         # Tesseract inutilisable (ara/fra absents) → EasyOCR + abandon du fr
         assert plan.engine == "easyocr"
         assert plan.langs == ["ar"]
-        assert plan.warnings[0]["code"] == "EASYOCR_AR_FR_DROPPED_FR"
+        assert plan.warnings[0]["code"] == "AR_FR_DROPPED_FR"
 
     def test_tesseract_explicit_missing_binary_raises(self):
         with pytest.raises(LanguageError, match="Tesseract"):
@@ -94,3 +96,76 @@ class TestPlanOcr:
     def test_unknown_engine_raises(self):
         with pytest.raises(LanguageError, match="Moteur"):
             plan_ocr("paddle", ["fr"], tesseract_available=False)
+
+
+class TestPaddleRules:
+    def test_paddle_supports(self):
+        assert paddle_supports(["fr", "en"])
+        assert paddle_supports(["ar", "en"])
+        assert not paddle_supports(["ar", "fr"])
+
+    def test_paddle_primary_lang_priority(self):
+        assert paddle_primary_lang(["fr", "ar", "en"]) == "ar"
+        assert paddle_primary_lang(["fr", "en"]) == "fr"
+        assert paddle_primary_lang(["en"]) == "en"
+
+    def test_explicit_paddle_not_installed_raises(self):
+        with pytest.raises(LanguageError, match="PaddleOCR"):
+            plan_ocr("paddleocr", ["fr"], tesseract_available=False, paddleocr_available=False)
+
+    def test_explicit_paddle_simple(self):
+        plan = plan_ocr(
+            "paddleocr", ["fr", "en"], tesseract_available=False, paddleocr_available=True
+        )
+        assert plan.engine == "paddleocr"
+        assert plan.langs == ["fr", "en"]
+        # un seul modèle PaddleOCR : code effectif unique
+        assert plan.engine_lang_codes == ["fr"]
+
+    def test_explicit_paddle_arabic_single_code(self):
+        plan = plan_ocr(
+            "paddleocr", ["ar", "en"], tesseract_available=False, paddleocr_available=True
+        )
+        assert plan.engine == "paddleocr"
+        assert plan.engine_lang_codes == ["ar"]
+
+    def test_paddle_ar_fr_switches_to_tesseract(self):
+        plan = plan_ocr(
+            "paddleocr", ["ar", "fr"], tesseract_available=True, paddleocr_available=True
+        )
+        assert plan.engine == "tesseract"
+        assert plan.warnings[0]["code"] == "AR_FR_SWITCHED_TESSERACT"
+
+    def test_paddle_ar_fr_drops_fr_without_tesseract(self):
+        plan = plan_ocr(
+            "paddleocr", ["ar", "fr"], tesseract_available=False, paddleocr_available=True
+        )
+        assert plan.engine == "paddleocr"
+        assert plan.langs == ["ar"]
+        assert plan.warnings[0]["code"] == "AR_FR_DROPPED_FR"
+
+    def test_auto_prefers_paddle_when_installed(self):
+        plan = plan_ocr(
+            "auto", ["fr", "en"], tesseract_available=False, paddleocr_available=True
+        )
+        assert plan.engine == "paddleocr"
+
+        plan = plan_ocr(
+            "auto", ["ar", "en"], tesseract_available=True, paddleocr_available=True
+        )
+        assert plan.engine == "paddleocr"
+
+    def test_auto_mixed_still_prefers_tesseract(self):
+        plan = plan_ocr(
+            "auto", ["ar", "fr"], tesseract_available=True, paddleocr_available=True
+        )
+        assert plan.engine == "tesseract"
+        assert plan.warnings == []
+
+    def test_auto_mixed_paddle_without_tesseract_drops_fr(self):
+        plan = plan_ocr(
+            "auto", ["ar", "fr"], tesseract_available=False, paddleocr_available=True
+        )
+        assert plan.engine == "paddleocr"
+        assert plan.langs == ["ar"]
+        assert plan.warnings[0]["code"] == "AR_FR_DROPPED_FR"

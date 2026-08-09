@@ -23,6 +23,9 @@ _ALIASES: dict[str, str] = {
 # Codes attendus par chaque moteur
 _EASYOCR_CODES = {"fr": "fr", "ar": "ar", "en": "en"}
 _TESSERACT_CODES = {"fr": "fra", "ar": "ara", "en": "eng"}
+_PADDLE_CODES = {"fr": "fr", "ar": "ar", "en": "en"}
+
+ENGINES = ("auto", "easyocr", "tesseract", "paddleocr")
 
 
 class LanguageError(ValueError):
@@ -61,6 +64,19 @@ def easyocr_supports(langs: list[str]) -> bool:
     return not ("ar" in langs and "fr" in langs)
 
 
+def paddle_supports(langs: list[str]) -> bool:
+    """PaddleOCR ne charge qu'un modèle : arabe + français impossible."""
+    return not ("ar" in langs and "fr" in langs)
+
+
+def paddle_primary_lang(langs: list[str]) -> str:
+    """Langue effective du modèle PaddleOCR unique (priorité : ar > fr > en)."""
+    for lang in ("ar", "fr", "en"):
+        if lang in langs:
+            return _PADDLE_CODES[lang]
+    return "fr"
+
+
 @dataclass
 class OcrPlan:
     """Résultat de la planification OCR : moteur effectif, langues effectives, avertissements."""
@@ -71,8 +87,12 @@ class OcrPlan:
 
     @property
     def engine_lang_codes(self) -> list[str]:
-        mapping = _TESSERACT_CODES if self.engine == "tesseract" else _EASYOCR_CODES
-        return [mapping[lang] for lang in self.langs]
+        if self.engine == "tesseract":
+            return [_TESSERACT_CODES[lang] for lang in self.langs]
+        if self.engine == "paddleocr":
+            # PaddleOCR ne charge qu'un seul modèle de reconnaissance.
+            return [paddle_primary_lang(self.langs)]
+        return [_EASYOCR_CODES[lang] for lang in self.langs]
 
 
 def _warning(code: str, message: str) -> dict[str, str]:
@@ -84,20 +104,22 @@ def plan_ocr(
     langs: list[str],
     tesseract_available: bool,
     tesseract_langs: set[str] | None = None,
+    paddleocr_available: bool = False,
 ) -> OcrPlan:
     """Choisit le moteur et les langues effectives selon les règles de compatibilité.
 
-    ``requested_engine`` : "auto", "easyocr" ou "tesseract".
+    ``requested_engine`` : "auto", "easyocr", "tesseract" ou "paddleocr".
     ``tesseract_langs`` : codes publics (fr/ar/en) dont les données Tesseract sont installées.
     """
     langs = normalize_langs(langs)
     engine = (requested_engine or "auto").lower()
-    if engine not in ("auto", "easyocr", "tesseract"):
+    if engine not in ENGINES:
         raise LanguageError(f"Moteur OCR inconnu : « {requested_engine} ».")
 
     warnings: list[dict[str, str]] = []
     tess_langs = tesseract_langs if tesseract_langs is not None else set(SUPPORTED_LANGS)
     tesseract_usable = tesseract_available and all(lang in tess_langs for lang in langs)
+    mixed_ar_fr = "ar" in langs and "fr" in langs
 
     if engine == "tesseract":
         if not tesseract_available:
@@ -114,27 +136,40 @@ def plan_ocr(
             )
         return OcrPlan(engine="tesseract", langs=langs, warnings=warnings)
 
+    if engine == "paddleocr" and not paddleocr_available:
+        raise LanguageError(
+            "PaddleOCR n'est pas installé. Installez-le avec "
+            "« pip install paddlepaddle paddleocr » puis relancez flowMD."
+        )
+
     if engine == "auto":
-        # Tesseract est préféré dès qu'il est utilisable et que le document
-        # combine arabe + français (cas non géré par EasyOCR), ou simplement
-        # disponible pour les documents multilingues.
-        if not easyocr_supports(langs) and tesseract_usable:
+        # Seul Tesseract gère arabe + français dans une même passe.
+        if mixed_ar_fr and tesseract_usable:
             return OcrPlan(engine="tesseract", langs=langs, warnings=warnings)
-        if tesseract_usable and "ar" in langs:
-            # Tesseract gère mieux les mélanges avec l'arabe ; préférence auto.
-            return OcrPlan(engine="tesseract", langs=langs, warnings=warnings)
-        engine = "easyocr"
+        if not mixed_ar_fr:
+            # PP-OCRv6 (PaddleOCR) : le plus précis quand il est installé.
+            if paddleocr_available:
+                return OcrPlan(engine="paddleocr", langs=langs, warnings=warnings)
+            if tesseract_usable and "ar" in langs:
+                # Tesseract gère bien l'arabe ; préférence auto sans PaddleOCR.
+                return OcrPlan(engine="tesseract", langs=langs, warnings=warnings)
+            engine = "easyocr"
+        else:
+            # ar + fr sans Tesseract : moteur mono-passe + abandon du français.
+            engine = "paddleocr" if paddleocr_available else "easyocr"
 
-    # engine == "easyocr" (demandé explicitement ou retenu par auto)
-    if easyocr_supports(langs):
-        return OcrPlan(engine="easyocr", langs=langs, warnings=warnings)
+    # engine ∈ {easyocr, paddleocr} — même contrainte : ar + fr impossible.
+    supports = easyocr_supports if engine == "easyocr" else paddle_supports
+    engine_label = "EasyOCR" if engine == "easyocr" else "PaddleOCR"
+    if supports(langs):
+        return OcrPlan(engine=engine, langs=langs, warnings=warnings)
 
-    # ar + fr demandés avec EasyOCR
+    # ar + fr demandés avec un moteur mono-passe
     if tesseract_usable:
         warnings.append(
             _warning(
-                "EASYOCR_AR_FR_SWITCHED_TESSERACT",
-                "EasyOCR ne prend pas en charge arabe + français simultanément : "
+                "AR_FR_SWITCHED_TESSERACT",
+                f"{engine_label} ne prend pas en charge arabe + français simultanément : "
                 "le moteur Tesseract a été utilisé à la place.",
             )
         )
@@ -143,11 +178,11 @@ def plan_ocr(
     effective = [lang for lang in langs if lang != "fr"]
     warnings.append(
         _warning(
-            "EASYOCR_AR_FR_DROPPED_FR",
-            "EasyOCR ne prend pas en charge arabe + français simultanément et "
+            "AR_FR_DROPPED_FR",
+            f"{engine_label} ne prend pas en charge arabe + français simultanément et "
             "Tesseract n'est pas disponible : le français a été ignoré pour ce "
             "document (langues utilisées : " + ", ".join(effective) + "). "
             "Installez Tesseract (paquets ara/fra) pour les documents mixtes.",
         )
     )
-    return OcrPlan(engine="easyocr", langs=effective, warnings=warnings)
+    return OcrPlan(engine=engine, langs=effective, warnings=warnings)

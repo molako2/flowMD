@@ -26,6 +26,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Moteur OCR supplémentaire PaddleOCR (PP-OCRv6) — le plus précis.
+paddleocr = [
+    "paddlepaddle>=3.0",
+    "paddleocr>=3.7",
+]
 dev = [
     "pytest>=8",
     "pytest-timeout>=2.3",
@@ -40,6 +45,10 @@ dev = [
 
 [project.scripts]
 flowmd = "flowmd.cli:app"
+
+# Plugin Docling : enregistre le moteur OCR PaddleOCR (PP-OCRv6) de flowMD.
+[project.entry-points."docling"]
+flowmd_paddleocr = "flowmd.ocr_paddle"
 
 [tool.setuptools.packages.find]
 where = ["src"]

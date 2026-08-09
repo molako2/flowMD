@@ -64,6 +64,10 @@ def _build_converter(cfg: ConversionConfig, plan: OcrPlan, settings: Settings):
     pipeline_options.images_scale = 2.0
     pipeline_options.ocr_options = build_ocr_options(plan, settings, force_ocr=cfg.force_ocr)
 
+    # Le moteur PaddleOCR est fourni par flowMD via le système de plugins Docling.
+    if cfg.engine == "paddleocr":
+        pipeline_options.allow_external_plugins = True
+
     # N'imposer artifacts_path que si les modèles y ont déjà été téléchargés,
     # sinon Docling utilise/alimente son cache par défaut à la demande.
     if models_ready(settings):
