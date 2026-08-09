@@ -55,6 +55,15 @@ export default function App() {
     getEngines()
       .then(setEngines)
       .catch(() => notify(fr.errors.network));
+    // Rafraîchit l'état des moteurs quand l'utilisateur revient sur l'onglet
+    // (ex. Tesseract installé entre-temps, serveur relancé).
+    const refresh = () => {
+      getEngines()
+        .then(setEngines)
+        .catch(() => {});
+    };
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
   }, [notify]);
 
   // Rafraîchit les jobs actifs toutes les secondes.
