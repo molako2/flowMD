@@ -122,10 +122,17 @@ langue **en vous l'indiquant clairement** (interface et CLI).
 
 Pour installer le moteur PaddleOCR :
 
+- **Windows** : double-cliquez sur **`install-paddleocr.bat`** (après un premier lancement
+  de `start.bat`).
+- **Linux / macOS** (dans le dossier flowMD, environnement activé) :
+
 ```bash
-pip install paddlepaddle paddleocr        # ou : pip install -e ".[paddleocr]"
-flowmd setup                              # pré-télécharge aussi les modèles PaddleOCR
+pip install paddlepaddle paddleocr
+flowmd setup
 ```
+
+> ⚠️ Sous Windows (cmd), ne copiez jamais la partie `# commentaire` d'une commande : le
+> symbole `#` n'est un commentaire que dans les terminaux Linux/macOS.
 
 ## Benchmark
 
