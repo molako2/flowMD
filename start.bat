@@ -22,6 +22,12 @@ if not exist .venv (
 
 call .venv\Scripts\activate.bat
 
+REM Detection automatique d'une installation Tesseract "portable" a cote de flowMD
+if exist "%~dp0Tesseract-OCR\tesseract.exe" (
+    set "FLOWMD_TESSERACT_CMD=%~dp0Tesseract-OCR\tesseract.exe"
+    echo Tesseract detecte : %~dp0Tesseract-OCR\tesseract.exe
+)
+
 python -c "import flowmd" >nul 2>nul
 if errorlevel 1 (
     echo Installation de flowMD et de ses dependances ^(quelques minutes^)...

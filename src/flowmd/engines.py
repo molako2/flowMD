@@ -41,11 +41,14 @@ def _candidate_tesseract_cmds() -> list[str]:
         candidates.append(which)
 
     # Installation « portable » à côté de flowMD (ex. C:\flowMD\Tesseract-OCR) :
-    # start.bat/start.sh lancent l'application depuis le dossier du projet.
+    # sondée depuis le dossier courant (start.bat/start.sh) ET depuis la racine
+    # du projet (installation éditable), pour être indépendant du cwd.
     exe_name = "tesseract.exe" if sys.platform == "win32" else "tesseract"
-    portable = Path.cwd() / "Tesseract-OCR" / exe_name
-    if portable.is_file():
-        candidates.append(str(portable))
+    project_root = Path(__file__).resolve().parents[2]
+    for base in (Path.cwd(), project_root):
+        portable = base / "Tesseract-OCR" / exe_name
+        if portable.is_file():
+            candidates.append(str(portable))
 
     if sys.platform == "win32":
         roots = [
