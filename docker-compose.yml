@@ -1,0 +1,10 @@
+services:
+  flowmd:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # Conserve uploads et sorties sur l'hôte (les modèles restent dans l'image).
+      - ./data/uploads:/app/data/uploads
+      - ./data/outputs:/app/data/outputs
+    restart: unless-stopped
