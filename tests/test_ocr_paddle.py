@@ -24,6 +24,9 @@ class TestPluginContract:
         engines = ocr_engines()
         assert PaddleOcrModel in engines["ocr_engines"]
 
+    def test_mkldnn_default_is_auto(self):
+        assert PaddleOcrOptions(lang=["fr"]).enable_mkldnn is None
+
     def test_disabled_model_needs_no_paddle(self):
         model = PaddleOcrModel(
             enabled=False,

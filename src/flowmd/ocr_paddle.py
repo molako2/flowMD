@@ -14,6 +14,7 @@ Le module est enregistré comme plugin Docling via l'entry point ``docling``
 from __future__ import annotations
 
 import logging
+import sys
 from collections.abc import Iterable
 from pathlib import Path
 from typing import ClassVar, Literal
@@ -51,6 +52,11 @@ class PaddleOcrOptions(OcrOptions):
     confidence_threshold: float = 0.5
     use_textline_orientation: bool = True
 
+    # None = choix automatique : oneDNN désactivé sous Windows (bug connu de
+    # PaddlePaddle 3.x : « ConvertPirAttribute2RuntimeAttribute not support »
+    # dans le chemin oneDNN du nouvel exécuteur), activé ailleurs.
+    enable_mkldnn: bool | None = None
+
 
 class PaddleOcrModel(BaseOcrModel):
     """Adaptateur Docling → API pipeline de PaddleOCR 3.x."""
@@ -80,9 +86,14 @@ class PaddleOcrModel(BaseOcrModel):
             device = decide_device(accelerator_options.device)
             paddle_device = "gpu" if device.startswith("cuda") else "cpu"
 
+            enable_mkldnn = self.options.enable_mkldnn
+            if enable_mkldnn is None:
+                enable_mkldnn = sys.platform != "win32"
+
             kwargs: dict = {
                 "lang": self.options.lang[0] if self.options.lang else "fr",
                 "device": paddle_device,
+                "enable_mkldnn": enable_mkldnn,
                 # Étapes de pré-traitement documentaire inutiles ici : Docling
                 # fournit déjà des zones de page correctement orientées.
                 "use_doc_orientation_classify": False,
