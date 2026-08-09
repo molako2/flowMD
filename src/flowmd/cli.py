@@ -191,9 +191,16 @@ def doctor() -> None:
 
     tess = probe_tesseract()
     if tess.available:
-        typer.echo(f"Tesseract : {tess.version} — langues fr/ar/en : {sorted(tess.langs) or 'aucune'}")
+        typer.echo(
+            f"Tesseract : {tess.version} ({tess.cmd}) — "
+            f"langues fr/ar/en : {sorted(tess.langs) or 'AUCUNE (réinstallez avec Arabic + French)'}"
+        )
     else:
-        typer.echo("Tesseract : non installé (facultatif — recommandé pour les documents arabe+français)")
+        typer.echo(
+            "Tesseract : introuvable (facultatif — recommandé pour les documents arabe+français).\n"
+            "  S'il vient d'être installé : fermez et relancez ce terminal/flowMD.\n"
+            "  Sinon : définissez FLOWMD_TESSERACT_CMD=chemin\\vers\\tesseract.exe"
+        )
 
     typer.echo(f"Modèles Docling téléchargés : {'oui' if models_ready(settings) else 'non (flowmd setup)'}")
 

@@ -171,6 +171,22 @@ src/flowmd/
 └── web/static/       # build du frontend (committé)
 ```
 
+## FAQ
+
+**Tesseract apparaît « indisponible » alors que je viens de l'installer (Windows).**
+Deux causes possibles :
+
+1. flowMD était déjà lancé pendant l'installation : fermez la fenêtre de `start.bat` et
+   relancez-le. flowMD cherche automatiquement Tesseract dans le PATH **et** dans les dossiers
+   d'installation Windows habituels (`C:\Program Files\Tesseract-OCR`, etc.).
+2. Tesseract est installé à un emplacement inhabituel : définissez la variable d'environnement
+   `FLOWMD_TESSERACT_CMD` avec le chemin complet, par exemple :
+   `setx FLOWMD_TESSERACT_CMD "D:\Outils\Tesseract-OCR\tesseract.exe"` puis relancez flowMD.
+
+Vérifiez ensuite avec `flowmd doctor` : la ligne Tesseract doit afficher la version, le chemin
+détecté et les langues fr/ar/en trouvées. Si la liste des langues est vide, relancez
+l'installateur Tesseract et cochez **Arabic** et **French** dans « Additional language data ».
+
 ## Limites connues
 
 - **Documents scannés volumineux** : le traitement est séquentiel et s'exécute sur CPU ;
