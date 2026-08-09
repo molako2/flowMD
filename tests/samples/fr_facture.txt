@@ -1,0 +1,11 @@
+FACTURE N° 2026-0142
+Société Exemple SARL - Casablanca
+Date : 15 janvier 2026
+Détail des prestations :
+Désignation Quantité Prix unitaire (MAD) Total (MAD)
+Audit des comptes annuels 1 25 000,00 25 000,00
+Revue fiscale trimestrielle 4 6 500,00 26 000,00
+Formation équipe comptable 2 3 200,00 6 400,00
+Total hors taxes : 57 400,00 MAD
+TVA (20 %) : 11 480,00 MAD
+Total TTC : 68 880,00 MAD
