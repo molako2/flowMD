@@ -196,11 +196,18 @@ def doctor() -> None:
             f"langues fr/ar/en : {sorted(tess.langs) or 'AUCUNE (réinstallez avec Arabic + French)'}"
         )
     else:
+        from .engines import _candidate_tesseract_cmds
+
         typer.echo(
             "Tesseract : introuvable (facultatif — recommandé pour les documents arabe+français).\n"
             "  S'il vient d'être installé : fermez et relancez ce terminal/flowMD.\n"
             "  Sinon : définissez FLOWMD_TESSERACT_CMD=chemin\\vers\\tesseract.exe"
         )
+        candidates = _candidate_tesseract_cmds()
+        if candidates:
+            typer.echo("  Chemins testés sans succès : " + " ; ".join(candidates))
+        else:
+            typer.echo("  Aucun emplacement candidat trouvé (PATH, dossiers standards, dossier flowMD).")
 
     typer.echo(f"Modèles Docling téléchargés : {'oui' if models_ready(settings) else 'non (flowmd setup)'}")
 
